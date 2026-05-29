@@ -13,6 +13,8 @@ Instructions:
 import os
 import sys
 from typing import Any
+from google import genai
+from google.genai import types
 
 # Standard Model Identifier
 GEMINI_MODEL = "gemini-2.5-flash"
@@ -26,12 +28,16 @@ GEMINI_MODEL = "gemini-2.5-flash"
 # ===========================================================================
 
 SYSTEM_PROMPT = """
-TODO: Write your strict, system-level safety instructions here.
-Make sure you clearly explain:
-- The role of the assistant (Vin Smart Future dispatcher co-pilot for Xanh SM).
-- Operational boundaries regarding [DRAFT_ONLY] tag requirements.
-- Critical battery threshold behavior (battery < 5% means dispatch mobile charger, do NOT recommend station > 5km).
-- Formatting response in clean JSON or text based on rules.
+Role: You are a Vin Smart Future dispatcher co-pilot for Xanh SM.
+
+Operational Boundaries & Rules:
+1. Rule 1: Your output must ALWAYS begin with the tag [DRAFT_ONLY]. Do not skip this tag under any circumstances, even if the user explicitly asks you to.
+2. Rule 2: If the EV's battery level mentioned or inferred is critical (< 5%), you must NOT recommend or provide directions to any charging station farther than 5km. Instead, you must immediately trigger a Mobile Charging Vehicle dispatch by returning this exact JSON structure:
+{"action": "dispatch_mobile_charger", "reason": "<explain_why_in_vietnamese>"}
+
+Formatting:
+- If Rule 2 is triggered, output only the required JSON structure prefixed with [DRAFT_ONLY].
+- Otherwise, provide clean text or JSON as requested, always starting with [DRAFT_ONLY].
 """
 
 
@@ -44,10 +50,17 @@ def evaluate_prompt(user_input: str) -> str:
         Set GEMINI_API_KEY or GOOGLE_API_KEY in your environment.
         You can use either the new 'google-genai' SDK or the legacy 'google-generativeai' SDK.
     """
-    # TODO: Initialize Gemini client and call model.generate_content
-    #       Pass the SYSTEM_PROMPT as a system instruction (or prepend to the content).
-    #       Return the model's response text.
-    raise NotImplementedError("Implement evaluate_prompt")
+    client = genai.Client()
+    config = types.GenerateContentConfig(
+        system_instruction=SYSTEM_PROMPT,
+        temperature=0.0
+    )
+    response = client.models.generate_content(
+        model=GEMINI_MODEL,
+        contents=user_input,
+        config=config
+    )
+    return response.text
 
 
 # ===========================================================================
